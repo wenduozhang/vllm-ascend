@@ -84,6 +84,23 @@ def test_masked_logits_and_all_equal_scores() -> None:
     assert ranks.tolist() == [3, 2]
 
 
+def test_rank_on_unmasked_logits_matches_edge_lookup_under_bitmask() -> None:
+    """Cloud ranks on the unmasked logits so the edge's unmasked lookup
+    reproduces the token the sampler picked from the grammar-masked logits.
+
+    The grammar bitmask sets the argmax (token 0) to -inf, so the sampler
+    picks token 1. Ranking on the masked logits would give rank 0 and the
+    edge would wrongly select the invalid argmax; ranking on the unmasked
+    logits gives rank 1 and the edge selects token 1.
+    """
+    encoder = LwdTokenRankEncoder()
+    unmasked = torch.tensor([[5.0, 4.0, 3.0, 2.0]], dtype=torch.bfloat16)
+    sampled = torch.tensor([1])
+    ranks = encoder.encode(unmasked, sampled)
+    assert ranks.tolist() == [1]
+    assert select_token_batch(unmasked, ranks.tolist()) == sampled.tolist()
+
+
 def test_rejected_slots_are_safe_and_vocab_index_is_reused() -> None:
     encoder = LwdTokenRankEncoder()
     logits = torch.tensor([[2.0, 2.0, 1.0]]).repeat(3, 1)
