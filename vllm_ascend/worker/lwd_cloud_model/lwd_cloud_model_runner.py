@@ -1054,16 +1054,9 @@ class LwdCloudModelRunner(LwdBaseModelRunner):
             # input_batch before the collect; reading live state would
             # slice batch-A tensors with batch-B order (the root cause of
             # high-concurrency misalignment)
-            #
-            # apply_grammar_bitmask mutates state[1] (logits) in place inside
-            # super().sample_tokens. Rank encoding must read the unmasked
-            # logits so the edge's rank lookup over its own unmasked lm_head
-            # logits selects the same token; snapshot them for constrained
-            # steps only (plain steps keep the live reference, zero overhead).
-            logits = state[1].clone() if grammar_output is not None else state[1]
             captured = (
                 state[5],
-                logits,
+                state[1],
                 state[2],
                 state[0],
                 list(self.input_batch.req_ids),
